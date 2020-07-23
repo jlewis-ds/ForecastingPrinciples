@@ -1,0 +1,245 @@
+---
+title: "Forecasting Principles and Practice"
+author: "Justin Lewis"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Import, echo=FALSE, message=FALSE, warning=FALSE}
+library(fpp2)
+```
+## Intro
+
+#### What can be forecast?
+Predictability depends on: how well we understand contributing factors, how much data is available, and whether the forecasts themselves affect the thing we forecast.
+
+A key step is knowing when something can be forecast accurately, and when we can do better than flipping a coin. Good forecasts capture genuine patterns and relationships which exist, but do not replicate events that will not occur again. 
+
+#### 5 Basic Steps
+
+1) Problem Definition
+
+2) Gathering Information
+
+3) Preliminary Exploratory Analysis
+
+4) Choosing and Fitting Models
+
+5) Use and Evaluation of a Forecasting Model
+
+## Time Series Graphics
+
+```{r}
+#5 years of data, starts in 2012
+y <- ts(c(123, 39, 78, 52, 110), start=2012)
+
+#Can also adjust the 'frequency' if data is in a vector.
+#This defines the number before the seasonal pattern repeats
+
+#Complicated TS plot using autoplot
+autoplot(melsyd[, "Economy.Class"])+ggtitle("Economy Passengers: MEL-SYD")+xlab("Year")+ylab("Thousands")
+```
+
+This plot has several more complicated features. Missing data, no passengers for a period, variation in the fluctuations.
+
+```{r}
+autoplot(a10)+ggtitle("Drug Sales")+ylab('$ Million')+xlab('Year')
+```
+
+Here there's a clear annual increasing trend with increasing seasonal patterns. Defining some simple terms:
+
+-Trend: trends exists when there is a long-term increase or decrease in the data, which does not have to be linear
+
+-Seasonal: a pattern occuring when a series is affected by factors such as time of year or day of the week. This is a fixed, known frequency
+
+-Cyclic: a cycle is when the data rises and falls but is not part of a fixed frequency, sometimes due to economic conditions or business cycles
+
+Many series will include multiple combinations of all three.
+
+#### Seasonal Plots
+
+These plot the data against individual 'seasons' in the data, which allows us to identify abnormalities. A variation of this is the polar coordinate seasonal plot, which can be seen in the second plot.
+
+```{r}
+ggseasonplot(a10, year.labels=TRUE, year.labels.left=TRUE) + ylab("$ Million")+ggtitle("Seasonal Plot: Drug Sales")
+
+
+ggseasonplot(a10, polar=TRUE)+ylab('$ Million')+ggtitle('Polar Seasonal Plot: Drug Sales')
+
+```
+
+#### Seasonal Subseries Plots
+
+These still emphasize the seasonal patterns but separate each season in separated mini-plots. The one shown below has a bar denoting the average, and shows the monthly trends over time.
+
+```{r}
+ggsubseriesplot(a10)+ylab('$ Millions')+ggtitle('Seasonal Subseries Plot: Drug Sales')
+
+```
+
+#### Scatterplots
+
+Scatterplots are useful for visualizing the relationships between time series, as well as the values within a series to examine correlations.
+
+```{r}
+autoplot(elecdemand[,c("Demand", "Temperature")], facets=TRUE)+xlab('Year: 2014')+ggtitle('Half-hourly Electricity Demand: Victoria, Austrailia')+ylab('')
+
+qplot(Temperature, Demand, data=as.data.frame(elecdemand))+ylab("Demand (GW)")+xlab("Temperature (C)")
+
+```
+
+When examining correlations it is important to keep in mind it only measures the strength of the linear relationship between two variables, and can be misleading. It is possible for very different distributions to have the same correlation coefficient which is why understanding the variables and relationships is so important.
+
+To look at relationships between multiple combinations of variables, we can use a scatterplot matrix:
+
+```{r}
+GGally::ggpairs(as.data.frame(visnights[,1:5]))
+
+```
+
+#### Autocorrelation
+
+This measures the linear relationship between lagged values of a time series. So how is y_t related to y_t-1 and so on. The strength of these values can be found in R:
+
+```{r}
+beer2 <- window(ausbeer, start=1992)
+ggAcf(beer2)
+
+```
+
+This shows that there is high autocorrelation with a period of 4 quarters. So r4 is higher since 4th quarter sales are high, and there is lower r2 since troughs tend to be 2 quarters behind peaks. Since these spikes raise above the blue dotted lines, it indicates that they are significantly different than zero.
+
+When data has a trend, the autocorrelations for small lags tend to be large and positive since nearby observations are also similiarly sized. The ACF of a trended series will tend to have positive values that slowly decrease with larger lag values. With both a trend AND seasonal data, there will be a combination of the effects.
+
+```{r}
+aelec <- window(elec, start=1980)
+autoplot(aelec)+xlab('Year')+ylab('GWh')
+ggAcf(aelec, lag=48)
+
+```
+
+Any time series with no autocorrelation at all is called white noise. For white noise we expect the ac to be close to zero, but it will not often be exactly zero simply due to some random variation. We expect 95% of the random spikes to be within +/- 2/sqrt(T) where T is the length of the time series. If any spikes are outside of this bound or if substantially more than 5% are outside the bounds, a series is probably not white noise.
+
+#### Exercises
+
+1. Explore gold, woolyrnq, and gas datasets and then a) plot each of them with autoplot(), b) find the frequency of each, and c) use which.max() to spot the outlier in 'gold'.
+
+```{r}
+#par(mfrow=c(1,3))
+autoplot(gold)+ylab('Price of Gold')+ggtitle('Daily Gold Prices ($)')
+frequency(gold)
+autoplot(woolyrnq)+ylab('Tonnes of Yarn')+ggtitle('Quarterly Yarn Production')
+frequency(woolyrnq)
+autoplot(gas)+ylab('Gas Produced')+ggtitle('Monthly Gas Production')
+frequency(gas)
+
+which.max(gold)
+```
+
+5. Use the ggseasonplot() and ggsubseriesplot() functions to explore seasonal patterns in writing, fancy, h02. What can be said about seasonal patterns? Are there any unusual years?
+
+```{r}
+ggseasonplot(writing)
+ggsubseriesplot(writing)
+
+#What is going on in August??
+```
+
+```{r}
+ggseasonplot(fancy)
+ggsubseriesplot(fancy)
+
+#Trending up over the years, but clearly a huge spike in their peak summer.
+```
+
+```{r}
+ggseasonplot(h02)
+ggsubseriesplot(h02)
+
+```
+
+10. dj contains 292 trading days of the Dow Jones Index. Compute the daily changes in the index. Do the changes look like white noise?
+
+```{r}
+ddj <- diff(dj)
+autoplot(ddj)
+ggAcf(ddj)
+
+#This looks a lot like white noise, but there is a single lag spike which crosses the boundary, and 3 others which are close. Maybe not?
+```
+
+# The Forecaster's Toolbox
+
+Coverage of general tools which are useful for different situations in forecasting. Methods to make a task simpler, checking methods for if available information has been adequately utilized, and techniques for computing prediction intervals.
+
+#### Simple Methods
+
+While it may be attractive to work on more complicated methods immediately, some very simple methods can be surprisingly effective. Even if they're not the final model approach, they can be used effectively as benchmarks.
+
+##### 1) Average Method
+All forecasted values are set equal to the mean of the historical data
+
+##### 2) Naive Method:
+All forecasted values are set equal to the most recent data point observed. This works particularly well when data follows a random walk, so it can also be called a 'random walk' forecast.
+
+##### 3) Seasonal Naive Method
+For highly seasonal data, we set each forecast to be equal to the last observed value from the same season of the year. For example, set next year's Feb forecast value to be the same as this year's past Feb observed value. If forecasting Q2 values next year, reuse Q2 observation from this year.
+
+##### 4) Drift Method
+This allows the forecasts to increase/decrease over time, where the amount of change over time (drift) is set to the average change seen in all historical data. Equivalent to drawing a line from first obs to last, and extrapolating it into the future.
+
+These can be seen applied to seasonal and non-seasonal data below.
+
+```{r}
+#1992 to 2007 training data.
+beer2 <- window(ausbeer, start=1992, end=c(2007,4))
+
+autoplot(beer2)+
+  autolayer(meanf(beer2, h=11), series='Mean', PI=FALSE)+
+  autolayer(naive(beer2, h=11), series='Naive', PI=FALSE)+
+  autolayer(snaive(beer2, h=11), series='Seasonal', PI=FALSE)+ggtitle('Forecasts for Quarterly Beer Production')+xlab('Year')+ylab('MLs')+
+  guides(colour=guide_legend(title='Forecast'))
+
+
+autoplot(goog200) +
+  autolayer(meanf(goog200, h=40),
+    series="Mean", PI=FALSE) +
+  autolayer(rwf(goog200, h=40),
+    series="Naïve", PI=FALSE) +
+  autolayer(rwf(goog200, drift=TRUE, h=40),
+    series="Drift", PI=FALSE) +
+  ggtitle("Google stock (daily ending 6 Dec 2013)") +
+  xlab("Day") + ylab("Closing Price (US$)") +
+  guides(colour=guide_legend(title="Forecast"))
+```
+
+There will be times where one of these simple methods is the best available method, but most often they will serve as benchmarks to compare to rather than the chosen method.
+
+#### Transformations and Adjustments
+
+By adjusting historical data we can often simplify the forecasting task at hand. Adjustments and transformations can simplify the patterns in the historical data by removing known sources of variation. Simpler patterns lead to more accurate forecasts.
+
+##### Calender Adjustments
+
+This has to do with variation simply due to the natural differences in lengths of months or quarters. 
+
+```{r}
+dframe <- cbind(Monthly = milk, DailyAverage = milk/monthdays(milk))
+autoplot(dframe, facet=TRUE)+
+  xlab("Years")+
+  ylab("Pounds")+
+  ggtitle('Milk Production Per Cow')
+```
+
+We can see that the seasonal pattern is significantly more simple when we are using a daily average instead of the total without considering month length.
+
+##### Population Adjustments
+
+In this case, any data which may be affected by population changes can be adjusted to give per-capita data instead. Consider the metric per thousand or per million people.
+
+##### Inflation Adjustments
+
+Data which is affected by the value of money should also be adjusted to account for inflation before attempting to model it. For this we define values as dollar values from a given year (year 2000 for example). A price index is used for these adjustments, commonly the Consumer Price Index is used for consumer goods.
