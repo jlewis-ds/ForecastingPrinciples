@@ -285,12 +285,99 @@ y_t = \begin{cases}
 \end{equation}
 
 Some important features to consider:
--if some $y_t < 0$ no power transformation is possible unless all obs are adjusted by adding a constant
--forecasting results are relatively insensitive to lambda
--transforms can sometimes make little difference to forecasted values, but have large effects on prediction intervals
+
+* if some $y_t < 0$ no power transformation is possible unless all obs are adjusted by adding a constant
+
+* forecasting results are relatively insensitive to lambda
+
+* transforms can sometimes make little difference to
+forecasted values, but have large effects on prediction intervals
 
 ##### Bias Adjustments
 
-When using these transformations, it's important to note that the back-transformed point forecast will not be in the \textbf{mean} of the forecast distribution, but more often the \textbf{median}. Often this will be just fine, but occasionally the mean will be required. For instance, adding up sales forecasts across multiple regions. Medians cannot be added up correctly, but the means will.
+When using these transformations, it's important to note that the back-transformed point forecast will not be in the **mean** of the forecast distribution, but more often the **median**. Often this will be just fine, but occasionally the mean will be required. For instance, adding up sales forecasts across multiple regions. Medians cannot be added up correctly, but the means will.
 
 Bias adjustment is not done by default in forecast package in R, so if this is desiredthe flag $biasadj=TRUE$ should be set when choosing Box-Cox transformation parameter.
+
+#### Residual Diagnostics
+
+For many, but not *all*, time series models the residuals are equal to the difference between the obs and the corresponding fitted values:
+
+\begin{equation}
+e_t = y_t - \hat{y_t}
+\end{equation}
+
+Residuals are useful for checking whether a model has adequately captured the information in the data, and a good forecasting method will have residuals with the properties:
+
+* residuals are uncorrelated. If there is correlation then there is information left in the residuals which should be used in the forecasts
+
+* residuals have zero mean. If the residuals have a non-zero mean then they are *biased*
+
+If a forecasting method does not satisfy these properties then it can certainly be improved. However, that does not mean forecasting methods which **do** satisfy them cannot be improved. These properties are useful for seeing if a method is using all available information, but are not effective for method selection.
+
+If either property is not satisfied then the method can be modified to give better forecasts. Bias adjustments are simple, just add the mean of the residuals to all forecasts. Fixing correlation is more difficult and discussed in depth later on.
+
+Additional useful (but not required) properties of the residuals are:
+
+* residuals have constant variance
+
+* residuals are normally distributed
+
+These properties make prediction interval calculation easier, however they do not indicate whether a method can be improved or not.
+
+```{r Google Example}
+
+autoplot(goog200)+ylab('Closing Price (USD)')+
+  ggtitle('Google Stock (Daily)')
+
+res <- residuals(naive(goog200))
+autoplot(res)+xlab('Day')+ylab('')+
+  ggtitle('Residuals from Naive Method')
+#Is the mean zero?
+
+gghistogram(res)+
+  ggtitle('Histogram of Residuals')
+#Are they normally distributed?
+
+ggAcf(res)+
+  ggtitle('ACF of Residuals')
+
+```
+
+Based on the discussion above, these graphs appear to show that the naive method is accounting for all available information. The mean is near zero, and there's no significant correlation in the series of residuals. However the histogram does suggest that they may not be normal, even if we ignore the outlier point the right tail is a bit too long. So the forecasts may be fairly good, however prediction intervals computed assuming a normal distribution may be inaccurate.
+
+##### Portmanteau Tests for Autocorrelation
+
+For a more formal test of autocorrelation, we can considers an entire set of $r_k$ values where $r_k$ is the autocorrelation ofr lag $k$. The ACF plot is implicitly carrying out multiple hypothesis tests, and if we consider enough lag points then it becomes likely that at least one will return a false positive. 
+
+To overcome this we can test whether the first $h$ autocorrelations are significantly different from what we would usually see in a white noise process. A test for a group of autocorrelations is called a *portmanteau test*.
+
+One of these tests is the **Box-Pierce Test** based on:
+
+\begin{equation}
+
+Q = T \sum_{k=1}^h r_k^2
+
+\end{equation}
+
+Here $h$ is the maximum lag being considered, while $T$ is the number of observations. If the autocorrelations are all close to zero, then we expect $Q$ to be small. Otherwise it will be large. For non-seasonal data $h = 10$ is recommended, while $h = 2m$ is recommended for seasonal data with period $m$. However this test is not good when $h$ is large, so if either of these recommendations are larger than $T/5$, use $h=\frac{T}{5}$.
+
+For a more accurate test, we turn to the **Ljung-Box Test** which uses:
+
+\begin{equation}
+Q^* = T(T+2)\sum_{k=1}^h(T-k)^{-1}r_k^2
+\end{equation}
+
+where large $Q^*$ suggests autocorrelation exists.
+
+To determine what large is, we consider that if looking at a white noise series then both $Q$ and $Q^*$ would have a $\Chi^2$ distribution with (h-K) degrees of freedom. With this knowledge we can calculate p-values for the values of $Q$ and $Q^*$ to determine if they are significant.
+
+```{r Residual Tests}
+Box.test(res, lag=10, fitdf=0)
+Box.test(res, lag=10, fitdf=0, type='Lj')
+
+#Use all methods with convenient call...
+checkresiduals(naive(goog200))
+
+```
+
