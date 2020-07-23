@@ -243,3 +243,54 @@ In this case, any data which may be affected by population changes can be adjust
 ##### Inflation Adjustments
 
 Data which is affected by the value of money should also be adjusted to account for inflation before attempting to model it. For this we define values as dollar values from a given year (year 2000 for example). A price index is used for these adjustments, commonly the Consumer Price Index is used for consumer goods.
+
+##### Mathematical Transformations
+
+If data shows variation which increases/decreases along with the level of the series then a transformation, such as a log() transform can be useful. Log transforms are useful because they are both interpretable, and they constrain forecasts to stay positive on the original scale.
+
+Other transformations can also be used however they are not as interpretable, such as power transformations. A useful combination of the two is the family of Box-Cox transformations which depend on an adjustable parameter $\lambda$. These are defined as:
+
+\begin{equation}
+w_t = \begin{cases}
+  log(y_t) & \text{if} \quad \lambda = 0 \\
+  (y_t^\lambda -1)/\lambda & \quad \text{otherwise}
+  \end{cases}
+\end{equation}
+
+If $\lambda = 1$ then $w_t = y_t - 1$ and the transformed data is shifted downwards but there is no change in shape. For all other values of $\lambda$ the time series data changes shape. A good value if one which makes the size of the seasonal variation approximately the same across the entire series.
+
+```{r}
+#This BoxCox.lambda call will choose a likely value for us
+lambda <- BoxCox.lambda(elec)
+lambda
+
+autoplot(BoxCox(elec,lambda))
+
+#But we can also see the result of choosing a significantly different one
+
+autoplot(BoxCox(elec, 0.7))
+
+#And the data without the transformation
+autoplot(elec)
+
+```
+
+With the transformation chosen, we need to reverse the transformation to obtain our actual forecasts on the original scale.
+
+\begin{equation}
+y_t = \begin{cases}
+  exp(w_t) & \text{if} \quad \lambda = 0 \\
+  (\lambda w_t + 1)^{\frac{1}{\lambda}} & \quad \text{otherwise}
+  \end{cases}
+\end{equation}
+
+Some important features to consider:
+-if some $y_t < 0$ no power transformation is possible unless all obs are adjusted by adding a constant
+-forecasting results are relatively insensitive to lambda
+-transforms can sometimes make little difference to forecasted values, but have large effects on prediction intervals
+
+##### Bias Adjustments
+
+When using these transformations, it's important to note that the back-transformed point forecast will not be in the \textbf{mean} of the forecast distribution, but more often the \textbf{median}. Often this will be just fine, but occasionally the mean will be required. For instance, adding up sales forecasts across multiple regions. Medians cannot be added up correctly, but the means will.
+
+Bias adjustment is not done by default in forecast package in R, so if this is desiredthe flag $biasadj=TRUE$ should be set when choosing Box-Cox transformation parameter.
