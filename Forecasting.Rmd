@@ -11,14 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r Import, echo=FALSE, message=FALSE, warning=FALSE}
 library(fpp2)
 ```
-## Intro
+## **Intro**
 
 #### What can be forecast?
 Predictability depends on: how well we understand contributing factors, how much data is available, and whether the forecasts themselves affect the thing we forecast.
 
 A key step is knowing when something can be forecast accurately, and when we can do better than flipping a coin. Good forecasts capture genuine patterns and relationships which exist, but do not replicate events that will not occur again. 
 
-#### 5 Basic Steps
+#### **5 Basic Steps**
 
 1) Problem Definition
 
@@ -30,7 +30,7 @@ A key step is knowing when something can be forecast accurately, and when we can
 
 5) Use and Evaluation of a Forecasting Model
 
-## Time Series Graphics
+## **Time Series Graphics**
 
 ```{r}
 #5 years of data, starts in 2012
@@ -59,7 +59,7 @@ Here there's a clear annual increasing trend with increasing seasonal patterns. 
 
 Many series will include multiple combinations of all three.
 
-#### Seasonal Plots
+#### **Seasonal Plots**
 
 These plot the data against individual 'seasons' in the data, which allows us to identify abnormalities. A variation of this is the polar coordinate seasonal plot, which can be seen in the second plot.
 
@@ -71,7 +71,7 @@ ggseasonplot(a10, polar=TRUE)+ylab('$ Million')+ggtitle('Polar Seasonal Plot: Dr
 
 ```
 
-#### Seasonal Subseries Plots
+#### **Seasonal Subseries Plots**
 
 These still emphasize the seasonal patterns but separate each season in separated mini-plots. The one shown below has a bar denoting the average, and shows the monthly trends over time.
 
@@ -80,7 +80,7 @@ ggsubseriesplot(a10)+ylab('$ Millions')+ggtitle('Seasonal Subseries Plot: Drug S
 
 ```
 
-#### Scatterplots
+#### **Scatterplots**
 
 Scatterplots are useful for visualizing the relationships between time series, as well as the values within a series to examine correlations.
 
@@ -100,7 +100,7 @@ GGally::ggpairs(as.data.frame(visnights[,1:5]))
 
 ```
 
-#### Autocorrelation
+#### **Autocorrelation**
 
 This measures the linear relationship between lagged values of a time series. So how is y_t related to y_t-1 and so on. The strength of these values can be found in R:
 
@@ -123,7 +123,7 @@ ggAcf(aelec, lag=48)
 
 Any time series with no autocorrelation at all is called white noise. For white noise we expect the ac to be close to zero, but it will not often be exactly zero simply due to some random variation. We expect 95% of the random spikes to be within +/- 2/sqrt(T) where T is the length of the time series. If any spikes are outside of this bound or if substantially more than 5% are outside the bounds, a series is probably not white noise.
 
-#### Exercises
+#### **Exercises**
 
 1. Explore gold, woolyrnq, and gas datasets and then a) plot each of them with autoplot(), b) find the frequency of each, and c) use which.max() to spot the outlier in 'gold'.
 
@@ -171,25 +171,21 @@ ggAcf(ddj)
 #This looks a lot like white noise, but there is a single lag spike which crosses the boundary, and 3 others which are close. Maybe not?
 ```
 
-# The Forecaster's Toolbox
+## **The Forecaster's Toolbox**
 
 Coverage of general tools which are useful for different situations in forecasting. Methods to make a task simpler, checking methods for if available information has been adequately utilized, and techniques for computing prediction intervals.
 
-#### Simple Methods
+#### **Simple Methods**
 
 While it may be attractive to work on more complicated methods immediately, some very simple methods can be surprisingly effective. Even if they're not the final model approach, they can be used effectively as benchmarks.
 
-##### 1) Average Method
-All forecasted values are set equal to the mean of the historical data
+* 1) Average Method - All forecasted values are set equal to the mean of the historical data
 
-##### 2) Naive Method:
-All forecasted values are set equal to the most recent data point observed. This works particularly well when data follows a random walk, so it can also be called a 'random walk' forecast.
+* 2) Naive Method - All forecasted values are set equal to the most recent data point observed. This works particularly well when data follows a random walk, so it can also be called a 'random walk' forecast.
 
-##### 3) Seasonal Naive Method
-For highly seasonal data, we set each forecast to be equal to the last observed value from the same season of the year. For example, set next year's Feb forecast value to be the same as this year's past Feb observed value. If forecasting Q2 values next year, reuse Q2 observation from this year.
+* 3) Seasonal Naive Method - For highly seasonal data, we set each forecast to be equal to the last observed value from the same season of the year. For example, set next year's Feb forecast value to be the same as this year's past Feb observed value. If forecasting Q2 values next year, reuse Q2 observation from this year.
 
-##### 4) Drift Method
-This allows the forecasts to increase/decrease over time, where the amount of change over time (drift) is set to the average change seen in all historical data. Equivalent to drawing a line from first obs to last, and extrapolating it into the future.
+* 4) Drift Method - This allows the forecasts to increase/decrease over time, where the amount of change over time (drift) is set to the average change seen in all historical data. Equivalent to drawing a line from first obs to last, and extrapolating it into the future.
 
 These can be seen applied to seasonal and non-seasonal data below.
 
@@ -218,7 +214,7 @@ autoplot(goog200) +
 
 There will be times where one of these simple methods is the best available method, but most often they will serve as benchmarks to compare to rather than the chosen method.
 
-#### Transformations and Adjustments
+#### **Transformations and Adjustments**
 
 By adjusting historical data we can often simplify the forecasting task at hand. Adjustments and transformations can simplify the patterns in the historical data by removing known sources of variation. Simpler patterns lead to more accurate forecasts.
 
@@ -299,7 +295,7 @@ When using these transformations, it's important to note that the back-transform
 
 Bias adjustment is not done by default in forecast package in R, so if this is desiredthe flag $biasadj=TRUE$ should be set when choosing Box-Cox transformation parameter.
 
-#### Residual Diagnostics
+#### **Residual Diagnostics**
 
 For many, but not *all*, time series models the residuals are equal to the difference between the obs and the corresponding fitted values:
 
@@ -381,3 +377,102 @@ checkresiduals(naive(goog200))
 
 ```
 
+#### **Evaluating Forecast Accuracy**
+
+Since the data used to fit the method and create the residuals uses the data itself, they will not be a good indicator of how well the forecast actually does. To determine this we need to forecast new data that has not been seen before. This leads to the common practice of creating train/test splits, to create and tune the forecast model with the training data, then evaluate the true performance by forecasting over the same time period as the test data then comparing how close to the test data our forecast predictions are.
+
+Useful functions in R for subsetting data are shown in the following section.
+
+```{r Subsetting Functions}
+#Extract data from 1995 onwards
+window(ausbeer, start=1995)
+
+#Subset based on indices. Grab the past 5 years of data (because it is stored as quarters)
+subset(ausbeer, start=length(ausbeer)-4*5)
+
+#Also grab specific quarter for every year
+subset(ausbeer, quarter = 1)
+
+#There is also head() and tail() 
+```
+
+##### **Forecast Errors**
+
+These are the difference between the observed value in the test set, and the forecasted value. *Error* here does not necessarily mean mistake, rather it means the unpredictable part of an observation, expressed as:
+
+\begin{equation}
+e_{T+h} = y_{T+h} - \hat{y_{T+h|T}}
+\end{equation}
+
+These are different than residuals because they are calculated on the test set, and they can involve multi-step forecasts into the future while residuals only consider a single value.
+
+Scale dependent errors are errors which are on the same scale as the data. Measures based only on $e_t$ are therefore scale dependent and cannot be used to compare series with different time units. Two common measures:
+
+* MAE = mean($|e_t|$)
+
+* RMSE = $\sqrt{(\text{mean}(e_t^2))}$
+
+Percentage errors have the advantage of being unit free, so can be used to compare forecast performances across different datasets. Most commonly used is MAPE:
+
+* MAPE = mean($|p_t|)$
+
+where $p_t = \frac{100e_t}{y_t}$. However, these have the issue of going to infinity/undefined values if there is any chance $y_t = 0$. Another disadvantage is that they disproportionately penalize negative errors over positive errors. This leads to the 'symmetric' MAPE, but this sMAPE also has several issues associated with it and the authors advise against using it.
+
+To address the shortcomings of percentage errors, **scaled errors** were proposed as an alternative. These scale errors based on training MAE from a simpler forecasting method. For instance if we use naive forecasts for the training MAE:
+
+* Non-seasonal: $q_j = \frac{e_j}{\frac{1}{T-1}sum_{t=2}^T|y_t - y_{t-1}|}
+
+* Seasonal: $q_j = \frac{e_j}{\frac{1}{T-m}sum_{t=m+1}^T|y_t - y_{t-m}|}
+
+A scaled error is less than 1 if it arises from a *better* forecast than the average naive method computed on the training data, and greater than 1 if it arises from a *worse* forecast. The mean absolute scaled error is simply calculated as MASE = mean($|q_j|$). 
+
+```{r Forecast Accuracy Examples}
+#We can compare the approaches and what the error methods tell us
+beer2 <- window(ausbeer,start=1992,end=c(2007,4))
+beerfit1 <- meanf(beer2,h=10)
+beerfit2 <- rwf(beer2,h=10)
+beerfit3 <- snaive(beer2,h=10)
+autoplot(window(ausbeer, start=1992)) +
+  autolayer(beerfit1, series="Mean", PI=FALSE) +
+  autolayer(beerfit2, series="Naive", PI=FALSE) +
+  autolayer(beerfit3, series="Seasonal naïve", PI=FALSE) +
+  xlab("Year") + ylab("Megalitres") +
+  ggtitle("Forecasts for quarterly beer production") +
+  guides(colour=guide_legend(title="Forecast"))
+
+beer3 <- window(ausbeer, start=2008)
+accuracy(beerfit1, beer3)
+accuracy(beerfit2, beer3)
+accuracy(beerfit3, beer3)
+
+```
+
+We can tell from the plot that seasonal naive performs the best, but in this case all metrics also agree with this assessment. Sometimes this may not be true or the best model may not be so easily identifiable. 
+
+##### **Time Series - Cross Validation**
+
+This is a more sophisticated version of train/test splitting, where multiple sets are considered to reduce the likelihood of overfitting to a specific subset of data in the training portion. However with time-series data this means we need to consider only data before a certain point, then create n-step future forecasts for a single observation. We then take an average of the accuracies across all the subsets. This is evaluation on a *rolling* forecasting origin, since we roll forward in time as we create new training sets. And since a single step forward may not be the most interesting to us, we can create forecasts for n-steps into the future.
+
+```{r TS Cross Validation}
+#Root mean squared error calculation
+e <- tsCV(goog200, rwf, drift=TRUE, h=1)
+sqrt(mean(e^2, na.rm=TRUE))
+
+#Residual RMSE calculation
+sqrt(mean(residuals(rwf(goog200,drift=TRUE))^2, na.rm=TRUE))
+
+```
+
+Of course the RMSE of the residuals is smaller, since it is using all the data available while the true forecasts are not. One good approach to choose the best model is to find the model with the smallest forecast RMSE computed with time series cv.
+
+##### Pipe Operator Introduction
+
+The code above can be a bit difficult to read, since we work from the inside out if we want to truly understand what is happening since there are nested functions. To make more legible code we can use the pipe operator. The LHS gets fed into the function to the right of the pipe. This makes it simple to walk through the code instead of having to parse nested functions.
+
+```{r Pipe}
+goog200 %>% tsCV(forecastfunction=rwf, drift=TRUE, h=1) -> e
+e^2 %>% mean(na.rm=TRUE) %>% sqrt()
+#> [1] 6.233
+goog200 %>% rwf(drift=TRUE) %>% residuals() -> res
+res^2 %>% mean(na.rm=TRUE) %>% sqrt()
+```
