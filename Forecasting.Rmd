@@ -476,3 +476,134 @@ e^2 %>% mean(na.rm=TRUE) %>% sqrt()
 goog200 %>% rwf(drift=TRUE) %>% residuals() -> res
 res^2 %>% mean(na.rm=TRUE) %>% sqrt()
 ```
+
+#### **Prediction Intervals**
+
+A prediction interval gives us an interval in which there is a certain probability that the true value $y_t$ lies in that interval. If we have normally distributed errors, then a 95% interval for an h-step forecast is given by:
+
+$$\hat{y}_{T+h|T} \pm 1.96\hat{\sigma}_h$$
+
+where $\hat{\sigma}_h$ is an estimate of the standard deviation of the h-step forecast distribution. The 1.96 is simply a multiplier associated with a 95% confidence interval in a normal distribution table. It can be substituted for any other value for varying confidences.
+
+##### One Step Prediction Intervals
+
+When predicting only a single step, the standard deviation of the forecast distribution is almost the same as the standard deviation of the residuals. The only differences are raised when there are parameters which need to be approximated for the forecast, which leads to slightly larger forecast standard deviations. 
+
+##### Multi Step Intervals
+
+As we begin to forecast increasing horizons, our predictions become more uncertain and the intervals begin to grow. Generally we say that $\sigma_h$ increases with $h$, but that does not *always* hold true. For single steps we could approximate the standard deviation $\sigma_h$ by simply looking at the standard deviation of the residuals. For multi-step forecasts there are more complicated methods of calculating/estimating this value, but they rely on the residuals being uncorrelated.
+
+##### Benchmark Methods
+
+For the four previously mentioned benchmark methods it is possible to derive what the multi-step forecast std dev will be, under the assumption of uncorrelated residuals. 
+
+* Mean: $\hat{\sigma}_h = \hat{\sigma} \sqrt{1+\frac{1}{T}}$
+
+* Naive: $\hat{\sigma}_h = \hat{\sigma}\sqrt{h}$
+
+* Seasonal Naive: $\hat{\sigma}_h = \hat{\sigma}\sqrt{k+1}$
+
+* Drift Forcasts: $\hat{\sigma}_h = \hat{\sigma}\sqrt{h(1+\frac{h}{T})}$
+
+Two things to note here. $k$ is just the integer part of $(h-1)/m$ where $m$ is the seasonal period. And when both $h=1$ and $T >> 1$ these all converge to $\hat{\sigma}$.
+
+The intervals will be calculated by R whenever using one of the typical benchmarking methods, and they can be plotted with autoplot as well
+
+```{r Prediction Intervals}
+naive(goog200)
+
+autoplot(naive(goog200))
+```
+
+##### Prediction Intervals from Bootstrapped Residuals
+
+The normal distribution assumption for the forecast errors may be an unreasonable assumption, so in this case one alternative is to use a bootstrapping approach. This works exclusively on the assumption that the errors are uncorrelated. 
+
+Based on the previous definition of our forecast error, we can rewrite it to see that the next simulated value in a time series will take the form:
+
+$$y_{T+1} = \hat{y}_{T+1|T} + e_{T+1}$$
+
+So we have our one step forecast value, and then the error will be produced by sampling from all the past errors (our residuals) since we are assuming future errors will be distributed similarly to past errors. We can then repeat this for a second time step and continue until we get a full set of future values. If we repeat the entire process (including the sampling from residuals) multiple times we end up with many future possibilities. From all these possibilities we then get our prediction intervals. 
+
+If we want to generate these intervals in R we can set the BOOTSTRAP flag.
+
+```{r Bootstrap Example}
+naive(goog200, bootstrap=TRUE)
+```
+
+These values end up being similar (but noteably not *identical*) to the intervals seen above.
+
+##### Prediction Intervals with Transformations
+
+If a transformation has been used on the time series data then the interval should be predicted on the transformed scale, then reverse calculated to find an interval on the original scale (intuitive).
+
+#### The Forecast Package
+
+The work here uses the facilities found in the **forecast** package of R. Many of the functions we have used so far (meanf(), naive(), rwf()) produce forecast objects. These objects have information about the method used, the data, point forecast values, confidence intervals, etc. 
+
+Thus far we have produced forecast objects directly but more commonly we will fit a model to the data first and then use the forecast() function to produce forecasts for the fitted model. The idea is that instead of blindly forecasting without considering the data, we should actually build up a  model ourselves and then simply forecast from there instead. This will be the method used moving forwards.
+
+##### Exercises
+
+1) Find a Box-Cox transformation to stabilize the variance in the datasets below.
+
+```{r 3.7.1}
+sets <- list(usnetelec, usgdp, mcopper, enplanements)
+for (s in sets){
+  autoplot(s)
+  print(BoxCox.lambda(s))
+}
+
+```
+
+2) Why is a BoxCox transformation unhelpful for the *cangas* dataset?
+
+```{r 3.7.2}
+autoplot(cangas)
+```
+
+The BoxCox transformation is not helpful because the variance is not consistently increasing or decreasing in the dataset. There is no pattern to the variance in the variance.
+
+5) Calculate the residuals from a seasonal naïve forecast applied to the quarterly Australian beer production data from 1992. The following code will help:
+
+```{r 3.7.5}
+beer <- window(ausbeer, start=1992)
+fc <- snaive(beer)
+autoplot(fc)
+res <- residuals(fc)
+autoplot(res)
+
+#Are the residuals distinguishable from white noise?
+checkresiduals(fc)
+```
+
+The distribution looks a bit too skewed to the left, the lag shows a few spikes which are outside of the bounds, and the p-value all suggest that this is *NOT* white noise and is distinguishable.
+
+9) *visnights* contains quarterly visitor nights (in millions) from 1998 to 2016 for twenty regions of Australia.
+
+a. Use window() to create three training sets for visnights[,"QLDMetro"], omitting the last 1, 2 and 3 years; call these train1, train2, and train3, respectively. For example train1 <- window(visnights[, "QLDMetro"], end = c(2015, 4)).
+
+```{r 3.7.9a}
+train1 <- window(visnights[, "QLDMetro"], end=c(2015,4))
+train2 <- window(visnights[, "QLDMetro"], end=c(2014, 4))
+train3 <- window(visnights[, "QLDMetro"], end=c(2013,4))
+```
+
+b. Compute one year of forecasts for each training set using the snaive() method. Call these fc1, fc2 and fc3, respectively
+
+```{r 3.7.9b}
+
+autoplot(train1)+
+  autolayer(snaive(y=train1, h=4))+
+  ggtitle("1 Year Omitted")
+
+autoplot(train2)+
+  autolayer(snaive(y=train2, h=4))+
+  ggtitle("2 Years Omitted")
+
+autoplot(train3)+
+  autolayer(snaive(y=train3, h=4))+
+  ggtitle("3 Years Omitted")
+
+
+```
